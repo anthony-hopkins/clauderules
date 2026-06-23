@@ -1,0 +1,36 @@
+---
+description: Color tokens, typography, spacing — no hardcoded values in components
+globs: "**/tailwind.config.*,**/globals.css,**/theme.*,**/tokens.*,**/*.css"
+alwaysApply: false
+---
+
+# Design System & Color Tokens
+
+Source: GENERAL_CLAUDE.md § Design System & Color Tokens.
+
+Applies when project has UI or user requests UI work.
+
+## When project HAS a design system
+
+Follow project tokens/theme/CSS variables. Never hardcode colors outside token system.
+
+## When NO design system AND UI work requested
+
+Establish tokens in theme config. Default scaffold (never hardcode hex in components):
+
+| Token | Value | Use |
+|-------|-------|-----|
+| background | #1a1a2e | Page background |
+| surface | #16213e | Cards/panels |
+| surface_elevated | #0f3460 | Modals/dropdowns |
+| primary | #39FF14 | CTAs, active |
+| primary_hover | #2ecc0f | Hover |
+| accent | #9B59B6 | Secondary actions |
+| text_primary | #FFFFFF | Body text |
+| text_secondary | #A0AEC0 | Muted text |
+| border | #2D3748 | Borders |
+| error | #FC8181 | Errors |
+| warning | #F6E05E | Warnings |
+| success | #68D391 | Success |
+
+Typography: Inter/sans, JetBrains Mono/mono, 16px base. Spacing: 4px grid. Radius: 8px default, 12px cards.

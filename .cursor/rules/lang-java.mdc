@@ -1,0 +1,14 @@
+---
+description: Java/Kotlin null-safety, bean validation, explicit exceptions
+globs: "**/*.java,**/*.kt"
+alwaysApply: false
+---
+
+# Java & Kotlin Rules
+
+Source: GENERAL_CLAUDE.md § Language & Type Safety Rules.
+
+- Null-safety annotations or Optional for nullable values
+- Bean validation or equivalent for request DTOs
+- Explicit exception hierarchy for domain errors
+- No raw types without justification
