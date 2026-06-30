@@ -1,0 +1,9 @@
+# Never commit real secrets or local artifacts for the enforcement layer.
+.env
+*.env
+!.env.example
+
+# Python build/test artifacts.
+__pycache__/
+*.py[cod]
+.pytest_cache/

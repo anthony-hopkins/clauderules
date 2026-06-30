@@ -1,6 +1,6 @@
 # AI Rules Guide
 
-This repository provides authoritative rules for AI-assisted development (Cursor, Claude Code, and similar agents). Rules are **mandatory and non-negotiable** when active: not suggestions to approximate. When a rule is ambiguous, work stops until a human clarifies—never proceed on a best guess.
+This repository provides authoritative rules for AI-assisted development (Claude Code and compatible agents). Rules are **mandatory and non-negotiable** when active: not suggestions to approximate. When a rule is ambiguous, work stops until a human clarifies—never proceed on a best guess.
 
 ## What each file does (start here)
 
@@ -10,13 +10,13 @@ Root-level `.md` files fall into two categories: **rules** (agents must follow) 
 
 | File | Stack | What it is |
 |------|-------|------------|
-| [CLAUDE.md](./CLAUDE.md) | **Node.js fullstack** | Full single-file rules: Docker Compose, Express, React, Prisma, prescribed `apps/api` + `apps/web` monorepo. |
+| [CLAUDE.md](./CLAUDE.md) | **Node.js fullstack** | Project-agnostic **governance core** (Prime Directives, protocols). Node specifics live in [`.claude/rules/project/`](./.claude/rules/project/) and load by glob. |
 | [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md) | **Any language / framework** | Full single-file rules: project discovery, generic deploy, multi-language. Use when you want one complete reference file. |
-| [GENERAL_CLAUDE_CORE.md](./GENERAL_CLAUDE_CORE.md) | **Any language / framework** | Slim **always-on** rules (~315 lines). Pair with [`.cursor/rules/`](./.cursor/rules/) for the recommended Cursor setup. |
+| [GENERAL_CLAUDE_CORE.md](./GENERAL_CLAUDE_CORE.md) | **Any language / framework** | Slim **always-on** rules. Pair with [`.claude/rules/`](./.claude/rules/) for the recommended Claude setup. |
 
 **How to tell:** Rules files open with **AUTHORITY LEVEL: ABSOLUTE**, Prime Directives, and a Correction Log. This README is not a rules file — agents follow the files above, not this guide alone.
 
-**Also rules (not at root):** [`.cursor/rules/*.mdc`](./.cursor/rules/) — 20 scoped Cursor rules. `core.mdc` loads every session; others load when you edit matching files (e.g. `Dockerfile`, `*.py`, routes).
+**Also rules (not at root):** [`.claude/rules/`](./.claude/rules/) — scoped rules organized as: generic rules at the root, stack rules in [`stacks/`](./.claude/rules/stacks/), and project-specific rules in [`project/`](./.claude/rules/project/). `core.md` is imported by `CLAUDE.md` (always on); every other file is plain Markdown opening with an **"Applies when"** line and is read on demand. Project-specific configuration is never placed in the governance core or Prime Directives.
 
 ### Documentation files — for humans
 
@@ -24,14 +24,16 @@ Root-level `.md` files fall into two categories: **rules** (agents must follow) 
 |------|---------|
 | **README.md** (this file) | Overview, file guide, install steps, section summaries. |
 | [RULES_SPLIT.md](./RULES_SPLIT.md) | Why and how the core + scoped split works; maintenance mapping. |
+| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide: how to make deterministic rules truly unbreakable via a LiteLLM + Open WebUI stack. |
+| [litellm/README.md](./litellm/README.md) | **Implementation** of that guide: deterministic enforcement of the Prime Directives at the proxy (forced injection, two-key override gate, secret/output guards). |
 
 ### Which rules should I use?
 
 | Your project | Copy into the project |
 |--------------|----------------------|
-| Generic / polyglot (Python, Go, Terraform, mixed, etc.) | `GENERAL_CLAUDE_CORE.md` + `.cursor/rules/` — optionally `GENERAL_CLAUDE.md` |
+| Generic / polyglot (Python, Go, Terraform, mixed, etc.) | `GENERAL_CLAUDE_CORE.md` + `.claude/rules/` — optionally `GENERAL_CLAUDE.md` |
 | Node fullstack matching the CLAUDE scaffold | `CLAUDE.md` |
-| Non-Cursor agent, one file only | `GENERAL_CLAUDE.md` or `CLAUDE.md` |
+| Single-file agent (no rules dir / imports) | `GENERAL_CLAUDE.md` or `CLAUDE.md` |
 
 **Choose one rules system per project.** Do not load `CLAUDE.md` and `GENERAL_CLAUDE.md` together unless a CORRECTION ENTRY explicitly permits it.
 
@@ -40,7 +42,7 @@ Documentation (read first)          Rules (install in your project)
   README.md  ───────────────►       CLAUDE.md              (Node, single file)
   RULES_SPLIT.md                    GENERAL_CLAUDE.md      (generic, single file)
                                     GENERAL_CLAUDE_CORE.md (generic, always-on)
-                                    .cursor/rules/*.mdc    (generic, scoped detail)
+                                    .claude/rules/*.md    (generic, scoped detail)
 ```
 
 ---
@@ -50,31 +52,44 @@ Documentation (read first)          Rules (install in your project)
 ```
 claude/
 ├── GENERAL_CLAUDE.md          # Full stack-agnostic rules (reference)
-├── GENERAL_CLAUDE_CORE.md     # Always-on slim core (~315 lines)
-├── CLAUDE.md                  # Full Node.js fullstack rules (reference)
+├── GENERAL_CLAUDE_CORE.md     # Always-on slim core
+├── CLAUDE.md                  # Node.js project-agnostic governance core
 ├── RULES_SPLIT.md             # Split architecture design doc
 ├── README.md                  # This guide
-└── .cursor/rules/             # Scoped Cursor rules (20 .mdc files)
-    ├── core.mdc               # alwaysApply: true
-    ├── deployment.mdc
-    ├── auth-security.mdc
-    └── …                      # See table below
+└── .claude/rules/             # Scoped rules (plain Markdown)
+    ├── core.md               # imported by CLAUDE.md (always-on)
+    ├── deployment.md         # generic scoped rules at the root
+    ├── auth-security.md
+    ├── …                      # other generic rules — see table below
+    ├── stacks/                # stack-specific (language/framework)
+    │   ├── lang-typescript.md
+    │   ├── lang-python.md
+    │   ├── lang-go.md
+    │   ├── lang-rust.md
+    │   └── lang-java.md
+    └── project/               # project-specific (this project only)
+        ├── nodejs-architecture.md
+        ├── nodejs-api.md
+        ├── nodejs-web.md
+        ├── nodejs-database.md
+        ├── nodejs-deployment.md
+        └── nodejs-testing-ci.md
 ```
 
 ## Three layers (recommended for generic projects)
 
 | Layer | File(s) | When loaded |
 |-------|---------|-------------|
-| **Always-on core** | `GENERAL_CLAUDE_CORE.md` + `.cursor/rules/core.mdc` | Every agent session |
-| **Scoped rules** | `.cursor/rules/*.mdc` (except core) | When matching files are open or in context |
+| **Always-on core** | `GENERAL_CLAUDE_CORE.md` + `.claude/rules/core.md` | Every agent session |
+| **Scoped rules** | `.claude/rules/*.md` (except core) | When matching files are open or in context |
 | **Full reference** | `GENERAL_CLAUDE.md` | Human review, rule edits, dispute resolution |
 
 On conflict: **Core > scoped rule > GENERAL_CLAUDE.md examples**.
 
 | Approach | Use when |
 |----------|----------|
-| **Split pack** (`GENERAL_CLAUDE_CORE.md` + `.cursor/rules/`) | **Recommended** for generic/polyglot projects in Cursor |
-| [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md) alone | Full single-file reference, or non-Cursor agents |
+| **Split pack** (`GENERAL_CLAUDE_CORE.md` + `.claude/rules/`) | **Recommended** for generic/polyglot projects |
+| [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md) alone | Full single-file reference, or agents without import support |
 | [CLAUDE.md](./CLAUDE.md) alone | Enterprise Node.js fullstack (Compose, Express, React, Prisma) |
 
 This README explains what each layer requires and **how to install the split pack in a generic project**. For literal rule text, see [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md) or [GENERAL_CLAUDE_CORE.md](./GENERAL_CLAUDE_CORE.md). For split design rationale, see [RULES_SPLIT.md](./RULES_SPLIT.md).
@@ -116,6 +131,7 @@ This README explains what each layer requires and **how to install the split pac
 31. [Correction Log](#correction-log)
 32. [Related Documentation](#related-documentation)
 33. [Rules Split Architecture](#rules-split-architecture)
+34. [Rule Enforcement Layer (LiteLLM)](#rule-enforcement-layer-litellm)
 
 ---
 
@@ -161,17 +177,23 @@ This README explains what each layer requires and **how to install the split pac
 | **Project Discovery Protocol** | Process in GENERAL_CLAUDE.md: identify language, archetype, deploy mechanism, and conventions from the repo before implementing. |
 | **Project-documented runtime** | GENERAL_CLAUDE.md runtime mode: use README/RUNBOOK/Makefile/CI commands—never invent alternate paths. |
 | **Language & Type Safety Rules** | GENERAL_CLAUDE.md section 15 (replaces stack-specific TypeScript Rules); applies strict typing per detected language. |
-| **Container & Infrastructure Rules** | GENERAL_CLAUDE.md section 19; `containers-infra.mdc` when Dockerfile/compose/terraform in context. |
+| **Container & Infrastructure Rules** | GENERAL_CLAUDE.md section 19; `containers-infra.md` when Dockerfile/compose/terraform in context. |
 | **GENERAL_CLAUDE_CORE.md** | Always-on slim rules (~315 lines): directives, clarification, correction, abbreviated deploy, architecture, code quality. |
-| **Scoped rule (`.mdc`)** | Cursor rule file in `.cursor/rules/` loaded when `globs` match open files. |
-| **Split pack** | `GENERAL_CLAUDE_CORE.md` + `.cursor/rules/` — recommended for generic Cursor projects. |
-| **core.mdc** | `alwaysApply: true` — injects core summary every session; points to GENERAL_CLAUDE_CORE.md. |
+| **Scoped rule (`.md`)** | Plain-Markdown rule file in `.claude/rules/`; read on demand per its "Applies when" line. |
+| **Split pack** | `GENERAL_CLAUDE_CORE.md` + `.claude/rules/` — recommended for generic projects. |
+| **core.md** | Always-on engineering core; imported by `CLAUDE.md` via `@.claude/rules/core.md`; points to GENERAL_CLAUDE_CORE.md. |
+| **Enforcement chokepoint** | The single component every model request must pass through — here the LiteLLM proxy — where deterministic rules can hard-block. See `litellm/`. |
+| **Deterministic vs. semantic rule** | Deterministic rules are decidable by code (enforceable 100%); semantic rules need judgment (only reduced, never guaranteed from text). |
+| **Forced prompt injection** | Proxy-side guarantee that the governance core is the first system message of every request, untampered. Guarantees presence, not obedience. |
+| **Two-key Override Protocol** | Proxy state machine (LOCKED→PENDING→UNLOCKED) requiring two explicit ordered user messages to relax a rule; the model cannot self-grant it. |
+| **Override ack token** | `[[OVERRIDE-ACK]]`; the literal token the model must emit only when acting on a proxy-granted override; rejected otherwise. |
+| **Reinforcement (Open WebUI filter)** | UX-only governance nudges in the chat UI; bypassable by direct API calls, so never an enforcement point. |
 
 ---
 
 ## Using Split Rules in a Generic Project
 
-Use this workflow when adopting rules for a **polyglot or existing repo** (Python API, Go CLI, Terraform infra, etc.) in **Cursor**.
+Use this workflow when adopting rules for a **polyglot or existing repo** (Python API, Go CLI, Terraform infra, etc.) with **Claude**.
 
 ### Step 1 — Copy files into your project
 
@@ -179,13 +201,14 @@ From this repository into your project root:
 
 ```text
 your-project/
+├── CLAUDE.md                  ← governance core (imports .claude/rules/core.md)
 ├── GENERAL_CLAUDE_CORE.md     ← copy from this repo
 ├── GENERAL_CLAUDE.md          ← optional but recommended (full reference)
-└── .cursor/
+└── .claude/
     └── rules/                 ← copy entire folder
 ```
 
-Minimum required for Cursor split: **`GENERAL_CLAUDE_CORE.md`** + **`.cursor/rules/`**.
+Minimum required: a root **`CLAUDE.md`** that imports **`.claude/rules/core.md`** (see Step 3), plus the **`.claude/rules/`** folder.
 
 ### Step 2 — Prune scoped rules you do not need
 
@@ -193,29 +216,30 @@ Delete unused language rules to reduce noise. Keep only what your repo uses:
 
 | If your project uses… | Keep | Can remove |
 |----------------------|------|------------|
-| TypeScript only | `lang-typescript.mdc` | `lang-python`, `lang-go`, `lang-rust`, `lang-java` |
-| Python only | `lang-python.mdc` | other `lang-*.mdc` |
-| No web UI | `frontend.mdc`, `design-tokens.mdc` | — |
-| No containers | `containers-infra.mdc`, `deployment.mdc` | Only if you never deploy via compose/k8s/terraform |
-| Library / no HTTP API | `api-design.mdc`, `auth-security.mdc` | — |
+| TypeScript only | `stacks/lang-typescript.md` | other `stacks/lang-*.md` |
+| Python only | `stacks/lang-python.md` | other `stacks/lang-*.md` |
+| No web UI | `frontend.md`, `design-tokens.md` | — |
+| No containers | `containers-infra.md`, `deployment.md` | Only if you never deploy via compose/k8s/terraform |
+| Library / no HTTP API | `api-design.md`, `auth-security.md` | — |
+| Not the Node scaffold | — | the whole `project/` directory (replace with your project's rules) |
 
-Always keep: **`core.mdc`**.
+Always keep: **`core.md`**. Put your own project-specific rules in **`project/`**, never in the core.
 
-### Step 3 — Verify Cursor picks up rules
+### Step 3 — Wire up Claude ingestion
 
-1. Open your project in Cursor.
-2. Confirm `.cursor/rules/core.mdc` exists with `alwaysApply: true`.
-3. In **Cursor Settings → Rules**, verify project rules are enabled.
-4. Open a file that matches a scoped glob (e.g. `docker-compose.yml`) and confirm the matching rule appears in context.
+1. Ensure a root **`CLAUDE.md`** exists and imports the core with a line: `@.claude/rules/core.md`.
+2. Claude reads `CLAUDE.md` and its `@import`s every session — that is your always-on core.
+3. The other files in `.claude/rules/` are plain Markdown; each opens with an **"Applies when"** line. Read the matching file when your task fits it. The **lookup index** in `CLAUDE.md` lists which file covers what.
+4. (Optional) Nested `CLAUDE.md` files placed inside a subdirectory are auto-read by Claude when you work in that subtree — use them for directory-scoped rules.
 
-No extra configuration is required if `.cursor/rules/` is at the project root.
+No frontmatter, globs, or editor settings are required — Claude ingests `CLAUDE.md` and its imports natively.
 
 ### Step 4 — Record corrections in the core file
 
 When the agent makes a repeatable mistake:
 
 1. Append a `CORRECTION-[NNN]` entry to **`GENERAL_CLAUDE_CORE.md`** Correction Log.
-2. Update the matching section in **`GENERAL_CLAUDE.md`** and the relevant `.mdc` file if the rule is scoped.
+2. Update the matching section in **`GENERAL_CLAUDE.md`** and the relevant `.md` file if the rule is scoped.
 3. Do not delete old correction entries.
 
 ### Step 5 — Optional: symlink instead of copy
@@ -225,54 +249,60 @@ For multiple repos sharing one rules source:
 ```bash
 # From your project root (example paths)
 ln -s /path/to/claude/GENERAL_CLAUDE_CORE.md ./GENERAL_CLAUDE_CORE.md
-ln -s /path/to/claude/.cursor/rules ./.cursor/rules
+ln -s /path/to/claude/.claude/rules ./.claude/rules
 ```
 
 On Windows, use directory junctions or copy on each rules update.
 
 ### What loads when (examples)
 
-| You are working on… | Always-on | Scoped rules likely active |
-|--------------------|-----------|----------------------------|
-| README typo | `core.mdc` | `documentation.mdc` if README open |
-| Login API endpoint | `core.mdc` | `api-design`, `auth-security`, `lang-*` |
-| React dashboard | `core.mdc` | `frontend`, `design-tokens`, `lang-typescript` |
-| `docker compose up` | `core.mdc` | `deployment`, `containers-infra` |
-| Prisma migration | `core.mdc` | `database`, `lang-typescript` |
-| GitHub Actions workflow | `core.mdc` | `ci-cd` |
+| You are working on… | Always-on | Read on demand |
+|--------------------|-----------|----------------|
+| README typo | `core.md` | `documentation.md` if README open |
+| Login API endpoint | `core.md` | `api-design`, `auth-security`, `lang-*` |
+| React dashboard | `core.md` | `frontend`, `design-tokens`, `lang-typescript` |
+| `docker compose up` | `core.md` | `deployment`, `containers-infra` |
+| Prisma migration | `core.md` | `database`, `lang-typescript` |
+| GitHub Actions workflow | `core.md` | `ci-cd` |
 
-### Single-file alternative (non-Cursor)
+### Single-file alternative
 
-If you are not using Cursor scoped rules, copy **`GENERAL_CLAUDE.md`** only and configure your agent to read it as workspace rules. You lose on-demand loading but keep one file to maintain.
+If your agent does not support `@import` or a rules directory, copy **`GENERAL_CLAUDE.md`** only and configure your agent to read it as its rules file. You lose on-demand loading but keep one file to maintain.
 
 ---
 
 ## Scoped Rules Reference
 
-All files live in [`.cursor/rules/`](./.cursor/rules/).
+All files live in [`.claude/rules/`](./.claude/rules/).
 
 | File | Loads when working with | Content summary |
 |------|-------------------------|-----------------|
-| `core.mdc` | **Always** (`alwaysApply: true`) | Prime directives, architecture, code quality summary |
-| `deployment.mdc` | compose, Makefile, terraform, k8s, RUNBOOK | Full 12-step deploy, D-01–D-08 |
-| `auth-security.mdc` | `auth/`, security middleware | Auth invariants, RBAC, input, rate limits |
-| `security-headers.mdc` | middleware, nginx, app entrypoints | CSP, HSTS, frame options |
-| `api-design.mdc` | routes, controllers, handlers, OpenAPI | Response envelopes, versioning |
-| `database.mdc` | migrations, prisma, models, schema | Schema, queries, pagination |
-| `frontend.mdc` | `.tsx`, `.vue`, components, pages | Forms, a11y, loading states |
-| `design-tokens.mdc` | tailwind.config, globals.css, theme | Color/typography tokens |
-| `containers-infra.mdc` | Dockerfile, compose, k8s, `.tf` | Non-root, pinned images, health checks |
-| `testing.mdc` | `*.test.*`, `tests/`, jest/pytest config | Pyramid, 80/85% coverage |
-| `ci-cd.mdc` | `.github/workflows`, Jenkinsfile | Lint, test, security scan jobs |
-| `environment.mdc` | `.env.example`, config/env | 12-factor, schema validation |
-| `optional-modules.mdc` | `modules/`, `integrations/` | Lazy plugins, health probes |
-| `documentation.mdc` | README, CHANGELOG, ARCHITECTURE, etc. | Doc sync, comments, PR checklist |
-| `security-checklist.mdc` | CHANGELOG, release workflows | Pre-release blocker checklist |
-| `lang-typescript.mdc` | `*.ts`, `*.tsx` | strict, Zod, no `any` |
-| `lang-python.mdc` | `*.py` | type hints, Pydantic, mypy |
-| `lang-go.mdc` | `*.go` | vet, staticcheck, errors |
-| `lang-rust.mdc` | `*.rs` | clippy, no unwrap in prod |
-| `lang-java.mdc` | `*.java`, `*.kt` | null-safety, bean validation |
+| `core.md` | **Always** (imported by `CLAUDE.md`) | Prime directives, architecture, code quality summary |
+| `deployment.md` | compose, Makefile, terraform, k8s, RUNBOOK | Full 12-step deploy, D-01–D-08 |
+| `auth-security.md` | `auth/`, security middleware | Auth invariants, RBAC, input, rate limits |
+| `security-headers.md` | middleware, nginx, app entrypoints | CSP, HSTS, frame options |
+| `api-design.md` | routes, controllers, handlers, OpenAPI | Response envelopes, versioning |
+| `database.md` | migrations, prisma, models, schema | Schema, queries, pagination |
+| `frontend.md` | `.tsx`, `.vue`, components, pages | Forms, a11y, loading states |
+| `design-tokens.md` | tailwind.config, globals.css, theme | Color/typography tokens |
+| `containers-infra.md` | Dockerfile, compose, k8s, `.tf` | Non-root, pinned images, health checks |
+| `testing.md` | `*.test.*`, `tests/`, jest/pytest config | Pyramid, 80/85% coverage |
+| `ci-cd.md` | `.github/workflows`, Jenkinsfile | Lint, test, security scan jobs |
+| `environment.md` | `.env.example`, config/env | 12-factor, schema validation |
+| `optional-modules.md` | `modules/`, `integrations/` | Lazy plugins, health probes |
+| `documentation.md` | README, CHANGELOG, ARCHITECTURE, etc. | Doc sync, comments, PR checklist |
+| `security-checklist.md` | CHANGELOG, release workflows | Pre-release blocker checklist |
+| `stacks/lang-typescript.md` | `*.ts`, `*.tsx` | strict, Zod, no `any` |
+| `stacks/lang-python.md` | `*.py` | type hints, Pydantic, mypy |
+| `stacks/lang-go.md` | `*.go` | vet, staticcheck, errors |
+| `stacks/lang-rust.md` | `*.rs` | clippy, no unwrap in prod |
+| `stacks/lang-java.md` | `*.java`, `*.kt` | null-safety, bean validation |
+| `project/nodejs-architecture.md` | `apps/**`, `pnpm-workspace.yaml` | Structure, runtime, layering, optional modules |
+| `project/nodejs-api.md` | `apps/api/**` | Express/Prisma/Zod, auth, RBAC, rate limits |
+| `project/nodejs-web.md` | `apps/web/**`, `tailwind.config.*` | React/Vite/Tailwind/shadcn, tokens, guards |
+| `project/nodejs-database.md` | `apps/api/prisma/**`, `*.prisma` | Prisma schema, base models |
+| `project/nodejs-deployment.md` | `docker-compose*.yml`, Dockerfiles | Compose stack, env vars, deploy commands |
+| `project/nodejs-testing-ci.md` | `*.test.ts`, `.github/workflows/**` | Jest/Supertest, coverage, CI/CD |
 
 ---
 
@@ -280,13 +310,13 @@ All files live in [`.cursor/rules/`](./.cursor/rules/).
 
 | Criterion | Split pack (recommended) | GENERAL_CLAUDE.md only | CLAUDE.md |
 |-----------|--------------------------|------------------------|-----------|
-| **Cursor adherence** | Best — core always-on, detail on demand | Good — full file every session | Good for Node monorepo |
+| **Agent adherence** | Best — core always-on, detail on demand | Good — full file every session | Good for Node monorepo |
 | **Stack** | Any language or framework | Any language or framework | Node, Express, React, Prisma |
 | **Deployment** | Discovers mechanism | Discovers mechanism | Docker Compose only |
 | **Project structure** | Follow existing conventions | Follow existing conventions | Mandatory `apps/api` + `apps/web` |
-| **Maintenance** | Core + .mdc files; sync from GENERAL_CLAUDE.md | Single file | Single file |
+| **Maintenance** | Core + .md files; sync from GENERAL_CLAUDE.md | Single file | Single file |
 
-When starting a **generic or existing repo** in Cursor, use the **split pack**. When starting a **new Node fullstack monorepo** matching the CLAUDE scaffold, use **CLAUDE.md** (Node scoped split not yet implemented).
+When starting a **generic or existing repo**, use the **split pack**. For a **Node fullstack monorepo** matching the CLAUDE scaffold, use **CLAUDE.md** plus its `.claude/rules/project/nodejs-*.md` pack (already implemented).
 
 ---
 
@@ -295,8 +325,8 @@ When starting a **generic or existing repo** in Cursor, use the **split pack**. 
 | Audience | Guidance |
 |----------|----------|
 | **Developers** | Install split pack (see above). Read Prime Directives before infra changes. Record corrections in `GENERAL_CLAUDE_CORE.md`. |
-| **AI agents** | Follow `GENERAL_CLAUDE_CORE.md` + active scoped `.mdc` rules. Full reference: `GENERAL_CLAUDE.md`. On conflict: core wins. Use Clarification format when blocked. |
-| **Reviewers** | Verify PRs against Architecture, Security Checklist (`security-checklist.mdc`), Documentation (`documentation.mdc`), and Code Quality (core). |
+| **AI agents** | Follow `GENERAL_CLAUDE_CORE.md` + active scoped `.md` rules. Full reference: `GENERAL_CLAUDE.md`. On conflict: core wins. Use Clarification format when blocked. |
+| **Reviewers** | Verify PRs against Architecture, Security Checklist (`security-checklist.md`), Documentation (`documentation.md`), and Code Quality (core). |
 
 ---
 
@@ -304,7 +334,7 @@ When starting a **generic or existing repo** in Cursor, use the **split pack**. 
 
 The active rules system is authoritative for AI-assisted development:
 
-- **Split pack:** `GENERAL_CLAUDE_CORE.md` + `.cursor/rules/`
+- **Split pack:** `GENERAL_CLAUDE_CORE.md` + `.claude/rules/`
 - **Single file:** `GENERAL_CLAUDE.md` or `CLAUDE.md`
 
 Rule categories carry different authority levels:
@@ -329,7 +359,7 @@ Six directives override **all** other instructions:
 1. **Never break or approximate rules** — Full compliance with the active rules system, not “close enough.”
 2. **Never assume intent** — Uncertainty requires asking the user first.
 3. **Stay in scope** — Only change what the user explicitly requested.
-4. **Deployment only via protocol** — Every deploy follows the 12-step checklist (`deployment.mdc` when in context).
+4. **Deployment only via protocol** — Every deploy follows the 12-step checklist (`deployment.md` when in context).
 5. **Never repeat mistakes** — User corrections become CORRECTION ENTRIES in `GENERAL_CLAUDE_CORE.md`.
 6. **User input becomes law** — Behavior-changing instructions gain the same authority as the rules file.
 
@@ -358,9 +388,9 @@ Best-guess implementation is a **critical violation**.
 AI sessions do not retain memory across chats. This protocol makes **`GENERAL_CLAUDE_CORE.md` the memory** (or `CLAUDE.md` when using the Node stack):
 
 1. Acknowledge the correction.
-2. Identify affected section(s) in core, full reference, or scoped `.mdc`.
+2. Identify affected section(s) in core, full reference, or scoped `.md`.
 3. Append a `CORRECTION-[NNN]` entry to the Correction Log in the **core** file.
-4. Update inline rules in `GENERAL_CLAUDE.md` and relevant `.mdc` if applicable.
+4. Update inline rules in `GENERAL_CLAUDE.md` and relevant `.md` if applicable.
 5. Confirm recording to the user.
 6. Apply to the current task.
 7. Never re-ask resolved items.
@@ -390,7 +420,7 @@ Corrections are sequential (`CORRECTION-001`, …), never deleted; superseded en
 
 **Key rules (D-01–D-08):** Single authoritative deploy path; env as source of truth; documented CLI; full checklist every time; stop on hardcoded secrets; migrations in runtime context; ask when service type unknown; destructive teardown requires explicit confirmation.
 
-Full deploy detail when editing manifests: **`deployment.mdc`**. Abbreviated checklist always in **`GENERAL_CLAUDE_CORE.md`**.
+Full deploy detail when editing manifests: **`deployment.md`**. Abbreviated checklist always in **`GENERAL_CLAUDE_CORE.md`**.
 
 ---
 
@@ -406,7 +436,7 @@ UI must use the defined dark theme: navy backgrounds (`#1a1a2e`, `#16213e`, `#0f
 
 ## Project Structure
 
-**Generic (split / GENERAL_CLAUDE):** Follow the **Structure Discovery Protocol** in `GENERAL_CLAUDE_CORE.md` — identify layout from manifests, never impose foreign templates. See `documentation.mdc` when editing README.
+**Generic (split / GENERAL_CLAUDE):** Follow the **Structure Discovery Protocol** in `GENERAL_CLAUDE_CORE.md` — identify layout from manifests, never impose foreign templates. See `documentation.md` when editing README.
 
 **Node monorepo (CLAUDE.md):** Mandatory layout:
 
@@ -665,16 +695,19 @@ Located at the bottom of **`GENERAL_CLAUDE_CORE.md`** when using the split pack 
 | [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md) | Full stack-agnostic reference |
 | [CLAUDE.md](./CLAUDE.md) | Node.js fullstack reference |
 | [RULES_SPLIT.md](./RULES_SPLIT.md) | Split architecture design and rationale |
-| [.cursor/rules/](./.cursor/rules/) | Scoped Cursor rules (install with core) |
+| [.claude/rules/](./.claude/rules/) | Scoped rules (install with core) |
+| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide for deterministic, proxy-level rule enforcement |
+| [litellm/](./litellm/) | Implemented enforcement layer (LiteLLM guards, override gate, tests) |
 
-### Quick install checklist (generic Cursor project)
+### Quick install checklist (generic project)
 
 - [ ] Copy `GENERAL_CLAUDE_CORE.md` to project root
-- [ ] Copy `.cursor/rules/` to project `.cursor/rules/`
+- [ ] Copy `.claude/rules/` to project `.claude/rules/`
+- [ ] Ensure root `CLAUDE.md` imports the core: `@.claude/rules/core.md`
 - [ ] Optionally copy `GENERAL_CLAUDE.md` for full reference
-- [ ] Remove unused `lang-*.mdc` files for your stack
-- [ ] Remove `frontend.mdc` / `design-tokens.mdc` if no UI
-- [ ] Verify `core.mdc` has `alwaysApply: true`
+- [ ] Remove unused `stacks/lang-*.md` files for your stack
+- [ ] Remove `frontend.md` / `design-tokens.md` if no UI
+- [ ] Replace `project/` contents with your project's rules (or remove if unused)
 - [ ] Record future corrections in `GENERAL_CLAUDE_CORE.md` Correction Log
 
 ---
@@ -685,13 +718,34 @@ The split is **implemented** in this repository. Summary:
 
 | Component | Lines (approx.) | Purpose |
 |-----------|-----------------|--------|
-| `GENERAL_CLAUDE_CORE.md` | ~315 | Always-on: directives, clarification, correction, deploy checklist, discovery, architecture, code quality |
-| `.cursor/rules/core.mdc` | ~30 | Cursor `alwaysApply` hook to core |
-| `.cursor/rules/*.mdc` (19 scoped) | ~50–80 each | Detail loaded when globs match |
+| `GENERAL_CLAUDE_CORE.md` | ~330 | Always-on: directives, clarification, correction, deploy checklist, discovery, architecture, code quality |
+| `.claude/rules/core.md` | ~35 | Always-on core; imported by `CLAUDE.md` |
+| `.claude/rules/*.md` (generic) | ~50–80 each | Read on demand per each file's "Applies when" |
+| `.claude/rules/stacks/*.md` | ~10–25 each | Language/framework rules (lang-*) |
+| `.claude/rules/project/*.md` | ~40–90 each | Project-specific rules (nodejs-*) |
 | `GENERAL_CLAUDE.md` | ~1,220 | Complete single-file reference |
 
-**Why split:** Reduces per-session token load (~4k–6k always-on vs ~15k–25k full file) while keeping deployment, auth, and language rules salient when you edit matching files.
+**Why split:** Reduces per-session token load (~4k–6k always-on vs ~15k–25k full file) while keeping deployment, auth, and language rules salient when you edit matching files. Project-specific configuration is isolated under `project/` and never inlined in the governance core or Prime Directives.
 
-**Maintaining rules:** Edit `GENERAL_CLAUDE.md` as the merge target; propagate changes to `GENERAL_CLAUDE_CORE.md` and affected `.mdc` files. See [RULES_SPLIT.md](./RULES_SPLIT.md) for the full section mapping.
+**Maintaining rules:** Edit `GENERAL_CLAUDE.md` as the merge target; propagate changes to `GENERAL_CLAUDE_CORE.md` and affected `.md` files. See [RULES_SPLIT.md](./RULES_SPLIT.md) for the full section mapping.
 
-**Not yet implemented:** `CLAUDE_CORE.md` + Node-specific scoped pack for `CLAUDE.md` monorepo projects.
+**Node project pack:** `CLAUDE.md` is now the project-agnostic governance core; its Node specifics live in `.claude/rules/project/nodejs-*.md` and load by glob.
+
+---
+
+## Rule Enforcement Layer (LiteLLM)
+
+The rules files above raise compliance, but prose alone can never *guarantee* it — a system prompt is just more tokens for a probabilistic model. The [`litellm/`](./litellm/) directory implements deterministic, **proxy-level enforcement** of the Prime Directives, following [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md).
+
+**Two classes of rules, two outcomes:**
+
+| Rule class | Examples | Enforceable to 100%? | Where |
+|------------|----------|----------------------|-------|
+| **Deterministic** | two-key override, no secrets in output, override-ack token, schema/format | **Yes — Guaranteed** | LiteLLM `pre_call`/`post_call` hooks (`litellm/guards/`) |
+| **Semantic** | stay in scope, don't assume intent, follow deploy protocol | **No — only Reduced** | Forced concise prompt + optional LLM verifier (+ Layer F on committed code) |
+
+**What the layer guarantees on every governed request:** the governance core is present and untampered (forced injection); no response can assert or act on an override the proxy did not grant (two-key state machine); inbound/outbound secret patterns are hard-blocked. **What it only reduces:** scope/intent discipline.
+
+**The root rules files are still required — this layer sits on top of them, it does not replace them.** LiteLLM only governs requests that pass through the proxy; file-reading agents (Cursor, Claude Code, Claude Desktop) never touch it and rely entirely on `CLAUDE.md` / `GENERAL_CLAUDE*.md` / `.claude/rules/`. `governance_core.md` is a trimmed projection of the Prime Directives, maintained top-down from those authoritative files. See [Relationship to the root rules files](./litellm/README.md#relationship-to-the-root-rules-files).
+
+The single most important caveat: the upstream model key lives only inside the proxy, which is why the proxy is an unbypassable chokepoint. Open WebUI filters are reinforcement only and are skipped on direct API calls. See [litellm/README.md](./litellm/README.md) for the full directive-by-directive enforcement map, onboarding, configuration, override walkthrough, runbook, and limitations.

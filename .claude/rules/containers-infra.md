@@ -1,0 +1,30 @@
+# Container & Infrastructure Rules
+
+**Applies when:** editing Dockerfiles, Compose files, Kubernetes/Helm manifests, or Terraform/IaC.
+
+Source: GENERAL_CLAUDE.md § Container & Infrastructure Rules.
+
+## Container security
+
+- Non-root user where possible
+- Pin base image versions — no :latest in production
+- Multi-stage builds; minimize attack surface
+- No secrets in Dockerfile/compose/IaC — use env or secret stores
+- Health checks for stateful/long-running services
+- Explicit networks in production
+
+## Docker Compose (when used)
+
+Explicit networks, depends_on with health, env via ${VAR_NAME}, override for dev profiles.
+
+## Kubernetes (when used)
+
+Resource requests/limits, liveness/readiness probes, Secrets, NetworkPolicies when required.
+
+## Terraform/Pulumi (when used)
+
+Locked state backend, env-specific variables, no secrets in .tf, plan before apply in CI.
+
+## Dockerfile pattern (example)
+
+Multi-stage: deps → builder → production with non-root USER before EXPOSE/CMD.

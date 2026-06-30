@@ -3,7 +3,7 @@
 > **AUTHORITY LEVEL: ABSOLUTE**
 > This file is the always-on rules core for AI-assisted development.
 > Full reference: [GENERAL_CLAUDE.md](./GENERAL_CLAUDE.md)
-> Scoped detail: [.cursor/rules/](./.cursor/rules/) (loaded when matching files are in context)
+> Scoped detail: [.claude/rules/](./.claude/rules/) (plain Markdown; read on demand per each file's "Applies when" line)
 >
 > On conflict: **Core > scoped rule > GENERAL_CLAUDE.md examples**
 > Every rule is MANDATORY and NON-NEGOTIABLE within its applicability.
@@ -17,13 +17,15 @@ THESE DIRECTIVES OVERRIDE ALL OTHER INSTRUCTIONS IN ALL CIRCUMSTANCES
 
   1. NEVER break, skip, interpret, or approximate any rule in this file or active scoped rules.
   2. NEVER assume intent. If uncertain about ANYTHING — ASK FIRST.
-  3. NEVER make changes outside the explicit scope of the user's request.
-  4. NEVER deploy, scaffold, or configure any service without following
+  3. NEVER make changes outside the explicit scope of the user's request (see SCOPE DISCIPLINE).
+  4. NEVER override, relax, or skip any rule without completing the OVERRIDE PROTOCOL (both keys).
+  5. NEVER deploy, scaffold, or configure any service without following
      the Deployment Configuration Protocol below exactly, line by line, in order.
-     Full detail: `.cursor/rules/deployment.mdc`
-  5. NEVER repeat a mistake. All user corrections MUST be appended to
+     Full detail: `.claude/rules/deployment.md`
+  6. NEVER output a code or configuration change without passing the PRE-OUTPUT SELF-AUDIT.
+  7. NEVER repeat a mistake. All user corrections MUST be appended to
      the Correction Log at the bottom of this file as a CORRECTION ENTRY.
-  6. ALL user input that changes behavior, corrects an error, or clarifies
+  8. ALL user input that changes behavior, corrects an error, or clarifies
      a rule becomes a permanent rule with the same authority as this file.
 
 ---
@@ -33,31 +35,43 @@ THESE DIRECTIVES OVERRIDE ALL OTHER INSTRUCTIONS IN ALL CIRCUMSTANCES
 **In this file (always-on):**
   1.  Prime Directives
   2.  Clarification Protocol
-  3.  Correction & Memory Protocol
-  4.  Deployment — Mandatory Checklist (abbreviated)
-  5.  Project Structure — Discovery Protocol
-  6.  Runtime Model
-  7.  Architecture Rules
-  8.  Code Quality
-  9.  Enforcement Summary
-  10. Correction Log
+  3.  Scope Discipline
+  4.  Override Protocol
+  5.  Pre-Output Self-Audit
+  6.  Enforcement Is External (Tooling)
+  7.  Correction & Memory Protocol
+  8.  Deployment — Mandatory Checklist (abbreviated)
+  9.  Project Structure — Discovery Protocol
+  10. Runtime Model
+  11. Architecture Rules
+  12. Code Quality
+  13. Enforcement Summary
+  14. Correction Log
 
-**Scoped rules (`.cursor/rules/` — loaded when relevant files match):**
-  - deployment.mdc — full deployment protocol, D-01–D-08
-  - auth-security.mdc — auth, RBAC, input security, rate limiting
-  - security-headers.mdc — HTTP security headers
-  - api-design.mdc — API envelopes, versioning
-  - database.mdc — schema, queries, migrations
-  - frontend.mdc — UI components, forms, a11y
-  - design-tokens.mdc — color/typography tokens
-  - containers-infra.mdc — Docker, K8s, Terraform
-  - testing.mdc — test pyramid, coverage
-  - ci-cd.mdc — CI/CD workflows
-  - environment.mdc — env validation, .env.example
-  - optional-modules.mdc — optional integrations
-  - documentation.mdc — mandatory docs, comments
-  - security-checklist.mdc — pre-release checklist
-  - lang-typescript.mdc, lang-python.mdc, lang-go.mdc, lang-rust.mdc, lang-java.mdc
+**Scoped rules (`.claude/rules/` — read on demand; each file opens with an "Applies when" line):**
+
+  Generic (root of `.claude/rules/`):
+  - deployment.md — full deployment protocol, D-01–D-08
+  - auth-security.md — auth, RBAC, input security, rate limiting
+  - security-headers.md — HTTP security headers
+  - api-design.md — API envelopes, versioning
+  - database.md — schema, queries, migrations
+  - frontend.md — UI components, forms, a11y
+  - design-tokens.md — color/typography tokens
+  - containers-infra.md — Docker, K8s, Terraform
+  - testing.md — test pyramid, coverage
+  - ci-cd.md — CI/CD workflows
+  - environment.md — env validation, .env.example
+  - optional-modules.md — optional integrations
+  - documentation.md — mandatory docs, comments
+  - security-checklist.md — pre-release checklist
+
+  Stack-specific (`.claude/rules/stacks/`):
+  - lang-typescript.md, lang-python.md, lang-go.md, lang-rust.md, lang-java.md
+
+  Project-specific (`.claude/rules/project/`):
+  - Concrete rules for the current project (e.g. nodejs-*). Empty/replaced per project.
+  - Never place project-specific configuration in this core or in the Prime Directives.
 
 ---
 
@@ -92,6 +106,75 @@ Claude MUST NOT proceed with a "best guess" under any circumstances.
 
 ---
 
+## SCOPE DISCIPLINE
+
+When asked to implement an enumerated or bounded subset of changes
+(e.g. "do 1, 2, 6 ONLY", "fix only X", "just rename Y"):
+
+  - Change ONLY the lines strictly required to satisfy each requested item.
+  - Do NOT, even to "improve", "clean up", or "future-proof":
+      - reformat, re-indent, re-flow, or re-order unrelated code
+      - rename symbols, variables, or files not named in the request
+      - add or remove imports, dependencies, or scaffolding not required by a requested item
+      - change log/error messages, status strings, return shapes, public signatures,
+        or control flow that was not requested
+      - implement any other known/reviewed issue that was not explicitly selected
+  - If a requested change genuinely REQUIRES a non-requested change, STOP and ask first
+    (Clarification Protocol). Do not proceed on a best guess.
+  - "Helpful extras" are scope violations. Restraint is mandatory, not optional.
+
+---
+
+## OVERRIDE PROTOCOL
+
+No rule in this core or any active scoped rule may be relaxed, skipped, or overridden unless
+BOTH of the following keys are satisfied, in order:
+
+  KEY 1 — The user EXPLICITLY states the specific rule/behavior is to be overridden,
+          naming or unambiguously describing it. A general, broad, or implied request is NOT enough.
+  KEY 2 — The agent re-confirms with a single yes/no question that names the rule and the
+          consequence of overriding it, and receives an explicit "yes" in a SEPARATE user
+          message BEFORE acting.
+
+Silence, ambiguity, time pressure, or a broad instruction is NOT consent.
+If both keys are not present, the rule STANDS — proceed under the rule, or stop via the
+Clarification Protocol. Every approved override is recorded as a CORRECTION ENTRY (scope:
+the stated context) BEFORE work resumes. ABSOLUTE rules (Security, Deployment) may be overridden
+only for a single, explicitly named action — never as a standing exception.
+
+---
+
+## PRE-OUTPUT SELF-AUDIT
+
+Before sending ANY code or configuration change, silently verify ALL of the following.
+If any check fails: fix it, or STOP and ask — do not output.
+
+  1. Enumerate every change made (per file, per hunk).
+  2. Map each change to a specific requested item. Anything that does not map → remove it,
+     or invoke the Clarification Protocol.
+  3. No new import, symbol, variable, or dependency is left unused.
+  4. No status string, message, return shape, public signature, or control flow changed
+     unless that change was explicitly requested.
+  5. No rule was relaxed without a completed OVERRIDE PROTOCOL (both keys + CORRECTION ENTRY).
+
+Performing the audit is mandatory; announcing it is optional.
+
+---
+
+## ENFORCEMENT IS EXTERNAL (TOOLING)
+
+Prose rules reduce violations but cannot guarantee them — an agent is probabilistic.
+Certainty comes from deterministic tooling that runs OUTSIDE the agent and can BLOCK.
+Every project governed by this core MUST back enforceable rules with such tooling:
+
+  - Linter/formatter for the project language (unused-import, line-length, complexity, etc.)
+  - Pre-commit hooks and CI gates that FAIL the build on violation
+  - Where available, editor/agent hooks that run lint/tests after edits and block on failure
+
+The rules above make the agent cooperate; tooling is what makes compliance near-certain.
+
+---
+
 ## CORRECTION & MEMORY PROTOCOL
 
 This is the highest-priority operational rule in this file.
@@ -108,7 +191,7 @@ When a user provides a correction, clarification, or new instruction:
   1. Acknowledge   — the correction explicitly before making any changes.
   2. Identify      — the section of this file or scoped rule that is affected.
   3. Append        — a CORRECTION ENTRY to the Correction Log at the bottom of this file.
-  4. Update        — the relevant rule in GENERAL_CLAUDE.md and scoped .mdc if applicable.
+  4. Update        — the relevant rule in GENERAL_CLAUDE.md and scoped .md if applicable.
   5. Confirm       — to the user that the correction has been recorded and state where.
   6. Apply         — the correction to the current task.
   7. Never ask again about anything resolved by a CORRECTION ENTRY.
@@ -134,7 +217,7 @@ CORRECTION ENTRY RULES:
 
 ## DEPLOYMENT — MANDATORY CHECKLIST
 
-Full detail: `.cursor/rules/deployment.mdc` and GENERAL_CLAUDE.md § Deployment Configuration Protocol.
+Full detail: `.claude/rules/deployment.md` and GENERAL_CLAUDE.md § Deployment Configuration Protocol.
 
 THIS SECTION IS ENFORCED WITHOUT EXCEPTION FOR EVERY SERVICE DEPLOYMENT.
 Every deployment action MUST follow this checklist line by line, in order.
@@ -157,7 +240,7 @@ Before ANY deploy command:
   STEP 11 — Verify post-deploy health (status, logs, smoke checks)
   STEP 12 — Report deployed components, status, and warnings to user
 
-DEPLOYMENT RULES D-01 through D-08 apply (see deployment.mdc).
+DEPLOYMENT RULES D-01 through D-08 apply (see deployment.md).
 Destructive teardown requires explicit user confirmation every time, without exception.
 
 ---
@@ -278,7 +361,7 @@ COMMAND POLICY:
     - [ ] Database migrations backwards compatible (when applicable)
     - [ ] API changes documented (when applicable)
     - [ ] Security implications considered
-    - [ ] Documentation updated per documentation.mdc when behavior changes
+    - [ ] Documentation updated per documentation.md when behavior changes
 
 ---
 
@@ -289,6 +372,9 @@ COMMAND POLICY:
   | Prime Directives           | ABSOLUTE         | Stop all work immediately       |
   | Deployment Protocol        | ABSOLUTE         | Stop all work immediately       |
   | Clarification Protocol     | ABSOLUTE         | Issue clarification question    |
+  | Scope Discipline           | ABSOLUTE         | Remove out-of-scope changes     |
+  | Override Protocol          | ABSOLUTE         | No override without both keys    |
+  | Pre-Output Self-Audit      | ABSOLUTE         | Do not output until audit passes |
   | Correction & Memory        | HIGHEST PRIORITY | Record immediately, enforce     |
   | Security Rules             | NON-NEGOTIABLE   | Stop, alert user                |
   | Architecture Rules         | MANDATORY        | Do not deviate without instruction |
@@ -312,4 +398,4 @@ Corrections will be appended here as CORRECTION-001, CORRECTION-002, etc. as the
 
 ---
 
-_GENERAL_CLAUDE_CORE.md — Always-on core. Full reference: GENERAL_CLAUDE.md. Scoped: .cursor/rules/_
+_GENERAL_CLAUDE_CORE.md — Always-on core. Full reference: GENERAL_CLAUDE.md. Scoped: .claude/rules/_

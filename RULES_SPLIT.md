@@ -1,6 +1,12 @@
 # Rules Split Architecture
 
-How to split `GENERAL_CLAUDE.md` (or `CLAUDE.md`) into **always-on** core rules and **scoped** Cursor rules for better adherence without losing authority.
+How to split `GENERAL_CLAUDE.md` (or `CLAUDE.md`) into **always-on** core rules and **scoped**, read-on-demand rules for better adherence without losing authority.
+
+> **Format note (Claude):** the implemented rules use plain Markdown with **no YAML frontmatter**. The
+> always-on core is pulled in via an `@import` in the root `CLAUDE.md` (`@.claude/rules/core.md`), and
+> every other file opens with an **"Applies when"** line that tells the agent when to read it. The
+> `globs:` strings shown in the examples below are kept only as a reference for *which paths each rule
+> concerns* — they are expressed as that "Applies when" line in each file, not as machine frontmatter.
 
 ## Problem
 
@@ -11,14 +17,14 @@ The full rules files (~1,200–1,800 lines) fit in context but compete with code
 | Layer | Role | Target size |
 |-------|------|-------------|
 | **Core (always-on)** | Non-negotiable behavior on every turn | ~350–500 lines |
-| **Scoped (`.cursor/rules/*.mdc`)** | Deep rules loaded when relevant files are in context | ~50–150 lines each |
+| **Scoped (`.claude/rules/*.md`)** | Deep rules loaded when relevant files are in context | ~50–150 lines each |
 | **Full reference** | `GENERAL_CLAUDE.md` / `CLAUDE.md` remain source of truth; scoped rules link back | unchanged |
 
 On conflict: **Core > scoped rule > full reference examples**. Corrections still append to the active file's Correction Log.
 
 ---
 
-## Always-on: `GENERAL_CLAUDE_CORE.md` (or one `.mdc` with `alwaysApply: true`)
+## Always-on: `GENERAL_CLAUDE_CORE.md` (imported by `CLAUDE.md` via `@.claude/rules/core.md`)
 
 Keep these sections **verbatim or tightly summarized**. This is what loads every session.
 
@@ -26,10 +32,10 @@ Keep these sections **verbatim or tightly summarized**. This is what loads every
 |---------|----------|-------|
 | Header + authority block | Yes | Full |
 | Prime Directives | Yes | Full — all 6 |
-| Table of Contents | Yes | List sections + pointer to `.cursor/rules/` |
+| Table of Contents | Yes | List sections + pointer to `.claude/rules/` |
 | Clarification Protocol | Yes | Full trigger table + warning format |
 | Correction & Memory Protocol | Yes | Full 7-step + entry format |
-| Deployment Configuration Protocol | **Abbreviated** | 12-step checklist titles + STOP conditions only; link to `deployment.mdc` for detail |
+| Deployment Configuration Protocol | **Abbreviated** | 12-step checklist titles + STOP conditions only; link to `deployment.md` for detail |
 | Runtime Model | Yes | Full, including Project Discovery Protocol |
 | Project Structure | **Summary** | Discovery protocol + "never deviate"; drop archetype templates |
 | Architecture Rules | Yes | Full dependency direction + layer responsibilities |
@@ -42,7 +48,7 @@ Keep these sections **verbatim or tightly summarized**. This is what loads every
 ### Abbreviated deployment block (example for core)
 
 ```markdown
-## DEPLOYMENT — MANDATORY CHECKLIST (detail: .cursor/rules/deployment.mdc)
+## DEPLOYMENT — MANDATORY CHECKLIST (detail: .claude/rules/deployment.md)
 
 Before ANY deploy: complete Steps 1–12 in order. STOP on missing env, hardcoded secrets,
 or unknown mechanism. Discover commands from README/RUNBOOK/manifests — never assume.
@@ -67,11 +73,12 @@ Estimated core size: **~400 lines** including Correction Log.
 
 ---
 
-## Scoped rules: `.cursor/rules/`
+## Scoped rules: `.claude/rules/`
 
-Create `.mdc` files with YAML frontmatter. Use `alwaysApply: false` and `globs` unless noted.
+Create plain Markdown `.md` files — **no frontmatter**. Begin each with an **"Applies when"** line
+describing the context that should trigger a read (derived from the `globs` reference shown per rule below).
 
-### 1. `deployment.mdc`
+### 1. `deployment.md`
 
 ```yaml
 description: Full 12-step deployment protocol, D-01–D-08, manifest discovery, command examples
@@ -83,7 +90,7 @@ alwaysApply: false
 
 ---
 
-### 2. `auth-security.mdc`
+### 2. `auth-security.md`
 
 ```yaml
 description: Authentication, sessions, MFA, passwords, RBAC, rate limiting
@@ -95,7 +102,7 @@ alwaysApply: false
 
 ---
 
-### 3. `security-headers.mdc`
+### 3. `security-headers.md`
 
 ```yaml
 description: HTTP security headers (CSP, HSTS, frame options)
@@ -103,11 +110,11 @@ globs: "**/middleware/**,**/nginx*.conf,**/Caddyfile,**/app.ts,**/main.go,**/set
 alwaysApply: false
 ```
 
-**Content:** Section 10 (Security Headers). Small; can merge into `auth-security.mdc` if preferred.
+**Content:** Section 10 (Security Headers). Small; can merge into `auth-security.md` if preferred.
 
 ---
 
-### 4. `api-design.mdc`
+### 4. `api-design.md`
 
 ```yaml
 description: API versioning, response envelopes, error format, auth endpoint capabilities
@@ -119,7 +126,7 @@ alwaysApply: false
 
 ---
 
-### 5. `database.mdc`
+### 5. `database.md`
 
 ```yaml
 description: Schema rules, queries, migrations, pagination, soft delete
@@ -131,7 +138,7 @@ alwaysApply: false
 
 ---
 
-### 6. `frontend.mdc`
+### 6. `frontend.md`
 
 ```yaml
 description: UI components, forms, a11y, loading states, routing guards
@@ -143,7 +150,7 @@ alwaysApply: false
 
 ---
 
-### 7. `design-tokens.mdc` (optional split from frontend)
+### 7. `design-tokens.md` (optional split from frontend)
 
 ```yaml
 description: Color tokens, typography, spacing — no hardcoded values in components
@@ -151,11 +158,11 @@ globs: "**/tailwind.config.*,**/globals.css,**/theme.*,**/tokens.*,**/*.css"
 alwaysApply: false
 ```
 
-**Content:** Color/typography tables from Section 5. Skip if `frontend.mdc` is enough.
+**Content:** Color/typography tables from Section 5. Skip if `frontend.md` is enough.
 
 ---
 
-### 8. `containers-infra.mdc`
+### 8. `containers-infra.md`
 
 ```yaml
 description: Docker, Compose, K8s, Terraform — multi-stage, non-root, pinned images
@@ -167,7 +174,7 @@ alwaysApply: false
 
 ---
 
-### 9. `testing.mdc`
+### 9. `testing.md`
 
 ```yaml
 description: Test pyramid, coverage thresholds, security tests
@@ -179,7 +186,7 @@ alwaysApply: false
 
 ---
 
-### 10. `ci-cd.mdc`
+### 10. `ci-cd.md`
 
 ```yaml
 description: CI jobs, security scan, deploy workflow patterns
@@ -191,7 +198,7 @@ alwaysApply: false
 
 ---
 
-### 11. `environment.mdc`
+### 11. `environment.md`
 
 ```yaml
 description: Env validation, .env.example sync, 12-factor config
@@ -203,7 +210,7 @@ alwaysApply: false
 
 ---
 
-### 12. `optional-modules.mdc`
+### 12. `optional-modules.md`
 
 ```yaml
 description: Optional integrations — lazy load, health probes, no import-time failures
@@ -215,7 +222,7 @@ alwaysApply: false
 
 ---
 
-### 13. `documentation.mdc`
+### 13. `documentation.md`
 
 ```yaml
 description: Mandatory docs, sync policy, comments, PR doc checklist
@@ -231,7 +238,7 @@ alwaysApply: false
 
 ---
 
-### 14. `security-checklist.mdc`
+### 14. `security-checklist.md`
 
 ```yaml
 description: Pre-release security checklist — auth, API, infrastructure
@@ -243,32 +250,36 @@ alwaysApply: false
 
 ---
 
-### 15. Language rules (one file per language detected in repo)
+### 15. Language rules (`stacks/` — one file per language detected in repo)
 
 | File | Globs | Content |
 |------|-------|---------|
-| `lang-typescript.mdc` | `**/*.{ts,tsx}` | TypeScript subsection from Section 15 |
-| `lang-python.mdc` | `**/*.py` | Python subsection from Section 15 |
-| `lang-go.mdc` | `**/*.go` | Go subsection from Section 15 |
-| `lang-rust.mdc` | `**/*.rs` | Rust subsection from Section 15 |
-| `lang-java.mdc` | `**/*.{java,kt}` | Java/Kotlin subsection from Section 15 |
+| `stacks/lang-typescript.md` | `**/*.{ts,tsx}` | TypeScript subsection from Section 15 |
+| `stacks/lang-python.md` | `**/*.py` | Python subsection from Section 15 |
+| `stacks/lang-go.md` | `**/*.go` | Go subsection from Section 15 |
+| `stacks/lang-rust.md` | `**/*.rs` | Rust subsection from Section 15 |
+| `stacks/lang-java.md` | `**/*.{java,kt}` | Java/Kotlin subsection from Section 15 |
 
 **Content:** Only the relevant block from Section 15 (Language & Type Safety Rules), plus universal forbidden/required patterns.
 
 ---
 
-## `CLAUDE.md` stack-specific split
+## `CLAUDE.md` project split — IMPLEMENTED
 
-Same pattern; swap scoped content for Node monorepo paths.
+`CLAUDE.md` is now a project-agnostic governance core (Prime Directives, protocols, abbreviated
+deploy checklist, Correction Log). All Node specifics were extracted into `.claude/rules/project/`.
 
-| Scoped file | Globs | Replaces |
-|-------------|-------|----------|
-| `nodejs-deployment.mdc` | `docker-compose*.yml`, `apps/api/Dockerfile`, `apps/web/Dockerfile` | Full Compose + 12-step with compose commands |
-| `nodejs-api.mdc` | `apps/api/**` | Express modules, Prisma, Zod, middleware names |
-| `nodejs-web.mdc` | `apps/web/**` | React, Vite, Tailwind, shadcn, axios patterns |
-| `prisma-database.mdc` | `apps/api/prisma/**` | Full Prisma schema + migration rules |
+| Scoped file (`project/`) | Globs | Contains |
+|--------------------------|-------|----------|
+| `nodejs-architecture.md` | `apps/**`, `pnpm-workspace.yaml`, `package.json` | Structure tree, runtime model, layering, optional modules, naming |
+| `nodejs-api.md` | `apps/api/**` | Express/Prisma/Zod, auth (RS256/MFA), RBAC, rate limits, security headers, API envelope |
+| `nodejs-web.md` | `apps/web/**`, `tailwind.config.*`, `globals.css` | React/Vite/Tailwind/shadcn, design tokens, axios, route guards |
+| `nodejs-database.md` | `apps/api/prisma/**`, `*.prisma` | Prisma schema + base models, query rules |
+| `nodejs-deployment.md` | `docker-compose*.yml`, `apps/*/Dockerfile`, `.env.example` | Compose stack, Dockerfiles, env vars, commands |
+| `nodejs-testing-ci.md` | `*.test.ts`, `jest.config.*`, `.github/workflows/**` | Jest/Supertest, coverage, CI/CD |
 
-Always-on core for Node projects can point to `CLAUDE.md` Correction Log and abbreviated checklist; deep YAML/templates live in scoped files only.
+The governance core points to `CLAUDE.md` Correction Log and the abbreviated checklist; deep
+YAML/templates live in the `project/` scoped files only — never in the core or Prime Directives.
 
 ---
 
@@ -279,11 +290,11 @@ flowchart LR
     subgraph alwaysOn [Every session]
         Core[GENERAL_CLAUDE_CORE]
     end
-    subgraph onDemand [When files match globs]
-        Deploy[deployment.mdc]
-        FE[frontend.mdc]
-        DB[database.mdc]
-        Lang[lang-typescript.mdc]
+    subgraph onDemand [When task matches the rule]
+        Deploy[deployment.md]
+        FE[frontend.md]
+        DB[database.md]
+        Lang[lang-typescript.md]
     end
     UserTask[User task + open files] --> Core
     UserTask --> onDemand
@@ -294,10 +305,10 @@ flowchart LR
 | Task | What loads |
 |------|------------|
 | "Fix typo in README" | Core only |
-| "Add login endpoint" | Core + `api-design.mdc` + `auth-security.mdc` + `lang-*.mdc` |
-| "Style the dashboard" | Core + `frontend.mdc` + `design-tokens.mdc` |
-| "Deploy to staging" | Core (abbrev checklist) + `deployment.mdc` + `containers-infra.mdc` |
-| "Add migration" | Core + `database.mdc` + `lang-*.mdc` |
+| "Add login endpoint" | Core + `api-design.md` + `auth-security.md` + `lang-*.md` |
+| "Style the dashboard" | Core + `frontend.md` + `design-tokens.md` |
+| "Deploy to staging" | Core (abbrev checklist) + `deployment.md` + `containers-infra.md` |
+| "Add migration" | Core + `database.md` + `lang-*.md` |
 
 ---
 
@@ -307,58 +318,73 @@ flowchart LR
 claude/
 ├── GENERAL_CLAUDE.md          # Full reference (unchanged authority)
 ├── GENERAL_CLAUDE_CORE.md     # Slim always-on — IMPLEMENTED
-├── CLAUDE.md                  # Full Node stack reference
+├── CLAUDE.md                  # Node project-agnostic governance core — IMPLEMENTED
 ├── RULES_SPLIT.md             # This document
 ├── README.md
-└── .cursor/
-    └── rules/                 # IMPLEMENTED — 20 scoped rules + core.mdc
-        ├── core.mdc             # alwaysApply: true
-        ├── deployment.mdc
-        ├── auth-security.mdc
-        ├── security-headers.mdc
-        ├── api-design.mdc
-        ├── database.mdc
-        ├── frontend.mdc
-        ├── design-tokens.mdc
-        ├── containers-infra.mdc
-        ├── testing.mdc
-        ├── ci-cd.mdc
-        ├── environment.mdc
-        ├── optional-modules.mdc
-        ├── documentation.mdc
-        ├── security-checklist.mdc
-        ├── lang-typescript.mdc
-        ├── lang-python.mdc
-        ├── lang-go.mdc
-        ├── lang-rust.mdc
-        └── lang-java.mdc
+└── .claude/
+    └── rules/                 # IMPLEMENTED — generic rules + core.md
+        ├── core.md             # always-on: imported by root CLAUDE.md
+        ├── deployment.md
+        ├── auth-security.md
+        ├── security-headers.md
+        ├── api-design.md
+        ├── database.md
+        ├── frontend.md
+        ├── design-tokens.md
+        ├── containers-infra.md
+        ├── testing.md
+        ├── ci-cd.md
+        ├── environment.md
+        ├── optional-modules.md
+        ├── documentation.md
+        ├── security-checklist.md
+        ├── stacks/              # stack-specific (language/framework)
+        │   ├── lang-typescript.md
+        │   ├── lang-python.md
+        │   ├── lang-go.md
+        │   ├── lang-rust.md
+        │   └── lang-java.md
+        └── project/            # project-specific (this project only)
+            ├── nodejs-architecture.md
+            ├── nodejs-api.md
+            ├── nodejs-web.md
+            ├── nodejs-database.md
+            ├── nodejs-deployment.md
+            └── nodejs-testing-ci.md
 ```
 
-### `core.mdc` (alwaysApply: true)
+**Placement rule:** generic rules live at the root of `.claude/rules/`; language/framework rules live
+in `stacks/`; rules unique to the current project live in `project/`. Project-specific configuration
+is never inlined into the always-on core or the Prime Directives.
 
-```yaml
----
-description: Prime directives, clarification, correction protocol, architecture, code quality
-alwaysApply: true
----
+### `core.md` (always-on via import)
 
-# Core rules
+Plain Markdown, no frontmatter. Pulled in by the root `CLAUDE.md` with a single import line:
+
+```markdown
+@.claude/rules/core.md
+```
+
+`core.md` itself opens with an "Applies when: ALWAYS" line, then:
+
+```markdown
+# Core Engineering Rules
 
 Follow GENERAL_CLAUDE_CORE.md (or embedded content).
-Full reference: GENERAL_CLAUDE.md. Scoped detail: sibling rules in .cursor/rules/.
+Full reference: GENERAL_CLAUDE.md. Scoped detail: sibling rules in .claude/rules/.
 ```
 
-Either embed core content directly in `core.mdc` or keep `GENERAL_CLAUDE_CORE.md` at repo root and reference it.
+Either embed core content directly in `core.md` or keep `GENERAL_CLAUDE_CORE.md` at repo root and reference it.
 
 ---
 
 ## Migration steps
 
 1. Create `GENERAL_CLAUDE_CORE.md` by copying sections listed in "Always-on" above.
-2. Extract each scoped section into `.cursor/rules/*.mdc` with frontmatter.
-3. Add to core TOC: "Sections 5–25: see `.cursor/rules/` when applicable."
+2. Extract each scoped section into `.claude/rules/*.md` as plain Markdown with an "Applies when" line (no frontmatter).
+3. Add to core TOC: "Sections 5–25: see `.claude/rules/` when applicable."
 4. Update `README.md` with split architecture link.
-5. In target projects: copy `GENERAL_CLAUDE_CORE.md` + `.cursor/rules/` (or symlink from this repo).
+5. In target projects: copy `GENERAL_CLAUDE_CORE.md` + `.claude/rules/` (or symlink from this repo).
 6. Keep `GENERAL_CLAUDE.md` as the merge target when editing rules; regenerate core + scoped from it periodically.
 
 ---
@@ -390,8 +416,8 @@ Either embed core content directly in `core.mdc` or keep `GENERAL_CLAUDE_CORE.md
 
 | Project | Always-on | Scoped pack |
 |---------|-----------|-------------|
-| Generic / polyglot | `GENERAL_CLAUDE_CORE.md` | `general/*.mdc` |
-| Node fullstack monorepo | `CLAUDE_CORE.md` | `nodejs/*.mdc` |
-| Library only | `GENERAL_CLAUDE_CORE.md` | `lang-*.mdc` + `testing.mdc` only |
+| Generic / polyglot | `GENERAL_CLAUDE_CORE.md` | `general/*.md` |
+| Node fullstack monorepo | `CLAUDE_CORE.md` | `nodejs/*.md` |
+| Library only | `GENERAL_CLAUDE_CORE.md` | `lang-*.md` + `testing.md` only |
 
 Copy only the scoped rules that match the repo's languages and archetype.

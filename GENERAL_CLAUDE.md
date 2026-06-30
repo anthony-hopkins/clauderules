@@ -2,8 +2,8 @@
 
 > **AUTHORITY LEVEL: ABSOLUTE**
 > This file is the single source of truth for all AI-assisted development on this project.
-> **Always-on core:** [GENERAL_CLAUDE_CORE.md](./GENERAL_CLAUDE_CORE.md) + [.cursor/rules/core.mdc](./.cursor/rules/core.mdc)
-> **Scoped detail:** [.cursor/rules/](./.cursor/rules/) — see [RULES_SPLIT.md](./RULES_SPLIT.md)
+> **Always-on core:** [GENERAL_CLAUDE_CORE.md](./GENERAL_CLAUDE_CORE.md) + [.claude/rules/core.md](./.claude/rules/core.md)
+> **Scoped detail:** [.claude/rules/](./.claude/rules/) — see [RULES_SPLIT.md](./RULES_SPLIT.md)
 > Every rule in this document is MANDATORY and NON-NEGOTIABLE.
 > Rules are NOT to be interpreted, approximated, or selectively applied.
 > If ANY rule is ambiguous, unclear, or appears to conflict with a task — STOP and ask the user before proceeding.
@@ -17,13 +17,15 @@ THESE DIRECTIVES OVERRIDE ALL OTHER INSTRUCTIONS IN ALL CIRCUMSTANCES
 
   1. NEVER break, skip, interpret, or approximate any rule in this file.
   2. NEVER assume intent. If uncertain about ANYTHING — ASK FIRST.
-  3. NEVER make changes outside the explicit scope of the user's request.
-  4. NEVER deploy, scaffold, or configure any service without following
+  3. NEVER make changes outside the explicit scope of the user's request (see SCOPE DISCIPLINE).
+  4. NEVER override, relax, or skip any rule without completing the OVERRIDE PROTOCOL (both keys).
+  5. NEVER deploy, scaffold, or configure any service without following
      the Deployment Configuration Protocol (Section: DEPLOYMENT) exactly,
      line by line, in documented order.
-  5. NEVER repeat a mistake. All user corrections MUST be appended to
+  6. NEVER output a code or configuration change without passing the PRE-OUTPUT SELF-AUDIT.
+  7. NEVER repeat a mistake. All user corrections MUST be appended to
      this file immediately under the relevant section as a CORRECTION ENTRY.
-  6. ALL user input that changes behavior, corrects an error, or clarifies
+  8. ALL user input that changes behavior, corrects an error, or clarifies
      a rule becomes a permanent rule with the same authority as this file.
 
 ---
@@ -32,30 +34,34 @@ THESE DIRECTIVES OVERRIDE ALL OTHER INSTRUCTIONS IN ALL CIRCUMSTANCES
 
   1.  Prime Directives
   2.  Clarification Protocol
-  3.  Correction & Memory Protocol
-  4.  Deployment Configuration Protocol
-  5.  Design System & Color Tokens
-  6.  Project Structure
-  7.  Runtime Model
-  8.  Authentication & Security
-  9.  RBAC
-  10. Security Headers
-  11. Input Security
-  12. Rate Limiting
-  13. Architecture Rules
-  14. Optional Modules
-  15. Language & Type Safety Rules
-  16. Database Rules
-  17. API Design Rules
-  18. Frontend Rules
-  19. Container & Infrastructure Rules
-  20. Testing Rules
-  21. CI/CD
-  22. Environment Variables
-  23. Code Quality
-  24. Documentation Rules
-  25. Security Checklist
-  26. Correction Log
+  3.  Scope Discipline
+  4.  Override Protocol
+  5.  Pre-Output Self-Audit
+  6.  Enforcement Is External (Tooling)
+  7.  Correction & Memory Protocol
+  8.  Deployment Configuration Protocol
+  9.  Design System & Color Tokens
+  10. Project Structure
+  11. Runtime Model
+  12. Authentication & Security
+  13. RBAC
+  14. Security Headers
+  15. Input Security
+  16. Rate Limiting
+  17. Architecture Rules
+  18. Optional Modules
+  19. Language & Type Safety Rules
+  20. Database Rules
+  21. API Design Rules
+  22. Frontend Rules
+  23. Container & Infrastructure Rules
+  24. Testing Rules
+  25. CI/CD
+  26. Environment Variables
+  27. Code Quality
+  28. Documentation Rules
+  29. Security Checklist
+  30. Correction Log
 
 ---
 
@@ -87,6 +93,82 @@ CLARIFICATION QUESTION FORMAT — use this exact format every time:
   No work will proceed until this is answered.
 
 Claude MUST NOT proceed with a "best guess" under any circumstances.
+
+---
+
+## SCOPE DISCIPLINE
+
+When asked to implement an enumerated or bounded subset of changes
+(e.g. "do 1, 2, 6 ONLY", "fix only X", "just rename Y"):
+
+  - Change ONLY the lines strictly required to satisfy each requested item.
+  - Do NOT, even to "improve", "clean up", or "future-proof":
+      - reformat, re-indent, re-flow, or re-order unrelated code
+      - rename symbols, variables, or files not named in the request
+      - add or remove imports, dependencies, or scaffolding not required by a requested item
+      - change log/error messages, status strings, return shapes, public signatures,
+        or control flow that was not requested
+      - implement any other known/reviewed issue that was not explicitly selected
+  - If a requested change genuinely REQUIRES a non-requested change, STOP and ask first
+    (Clarification Protocol). Do not proceed on a best guess.
+  - "Helpful extras" are scope violations. Restraint is mandatory, not optional.
+
+EXAMPLE (the failure this rule prevents): asked to "implement items 1,2,6,8,9,10,11 ONLY",
+adding an unused `import os`, reformatting comments, renaming a status string from "errored"
+to "error", or implementing un-selected review items are ALL scope violations — even though
+each looks "helpful". Do none of them without an explicit request.
+
+---
+
+## OVERRIDE PROTOCOL
+
+No rule in this file or any active scoped rule may be relaxed, skipped, or overridden unless
+BOTH of the following keys are satisfied, in order:
+
+  KEY 1 — The user EXPLICITLY states the specific rule/behavior is to be overridden,
+          naming or unambiguously describing it. A general, broad, or implied request is NOT enough.
+  KEY 2 — Claude re-confirms with a single yes/no question that names the rule and the
+          consequence of overriding it, and receives an explicit "yes" in a SEPARATE user
+          message BEFORE acting.
+
+Silence, ambiguity, time pressure, or a broad instruction is NOT consent.
+If both keys are not present, the rule STANDS — proceed under the rule, or stop via the
+Clarification Protocol. Every approved override is recorded as a CORRECTION ENTRY (scope:
+the stated context) BEFORE work resumes. ABSOLUTE rules (Security, Deployment) may be overridden
+only for a single, explicitly named action — never as a standing exception.
+
+---
+
+## PRE-OUTPUT SELF-AUDIT
+
+Before sending ANY code or configuration change, silently verify ALL of the following.
+If any check fails: fix it, or STOP and ask — do not output.
+
+  1. Enumerate every change made (per file, per hunk).
+  2. Map each change to a specific requested item. Anything that does not map → remove it,
+     or invoke the Clarification Protocol.
+  3. No new import, symbol, variable, or dependency is left unused.
+  4. No status string, message, return shape, public signature, or control flow changed
+     unless that change was explicitly requested.
+  5. No rule was relaxed without a completed OVERRIDE PROTOCOL (both keys + CORRECTION ENTRY).
+
+Performing the audit is mandatory; announcing it is optional.
+
+---
+
+## ENFORCEMENT IS EXTERNAL (TOOLING)
+
+Prose rules reduce violations but cannot guarantee them — an agent is probabilistic.
+Certainty comes from deterministic tooling that runs OUTSIDE the agent and can BLOCK.
+Every project governed by these rules MUST back enforceable rules with such tooling:
+
+  - Linter/formatter for the project language (unused-import, line-length, complexity, etc.).
+    Example: a Python linter (ruff/flake8) flags an unused `import os` (F401) and over-length
+    lines (E501) deterministically — exactly the class of violation prose rules miss.
+  - Pre-commit hooks and CI gates that FAIL the build on violation.
+  - Where available, editor/agent hooks that run lint/tests after edits and block on failure.
+
+The rules above make the agent cooperate; tooling is what makes compliance near-certain.
 
 ---
 
@@ -1191,6 +1273,9 @@ Adapt checklist items to project's stack; principles are mandatory.
   | Prime Directives           | ABSOLUTE         | Stop all work immediately       |
   | Deployment Protocol        | ABSOLUTE         | Stop all work immediately       |
   | Clarification Protocol     | ABSOLUTE         | Issue clarification question    |
+  | Scope Discipline           | ABSOLUTE         | Remove out-of-scope changes     |
+  | Override Protocol          | ABSOLUTE         | No override without both keys    |
+  | Pre-Output Self-Audit      | ABSOLUTE         | Do not output until audit passes |
   | Correction & Memory        | HIGHEST PRIORITY | Record immediately, enforce     |
   | Security Rules             | NON-NEGOTIABLE   | Stop, alert user                |
   | Architecture Rules         | MANDATORY        | Do not deviate without instruction |

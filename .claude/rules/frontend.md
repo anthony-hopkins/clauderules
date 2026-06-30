@@ -1,0 +1,30 @@
+# Frontend Rules
+
+**Applies when:** building UI components, pages, forms, or client-side routing.
+
+Source: GENERAL_CLAUDE.md § Frontend Rules.
+
+Discover stack from manifests (package.json, vite.config, next.config, etc.). Do not substitute frameworks.
+
+## Universal rules
+
+- Presentational vs smart components per project patterns
+- Forms with schema validation — no uncontrolled inputs without justification
+- Loading states on all async actions; inline errors — no alert()
+- Skeleton loaders; empty states for lists
+- aria labels; 4.5:1 contrast minimum
+- Do not disable submit for validation — show inline errors
+- No secrets in client bundle
+- Access tokens per auth-security.md (memory only)
+
+## Styling
+
+Use project styling system. Follow design-tokens.md. No hardcoded values outside theme.
+
+## Routing & auth
+
+- Protected routes → login redirect
+- MFA challenge when enabled and unverified
+- Role guard for restricted views
+
+Reference patterns (examples): React ProtectedRoute/RoleGuard; Vue navigation guards; Svelte stores.
