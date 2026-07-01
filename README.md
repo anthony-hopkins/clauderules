@@ -24,8 +24,10 @@ Root-level `.md` files fall into two categories: **rules** (agents must follow) 
 |------|---------|
 | **README.md** (this file) | Overview, file guide, install steps, section summaries. |
 | [RULES_SPLIT.md](./RULES_SPLIT.md) | Why and how the core + scoped split works; maintenance mapping. |
-| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide: how to make deterministic rules truly unbreakable via a LiteLLM + Open WebUI stack. |
-| [litellm/README.md](./litellm/README.md) | **Implementation** of that guide: deterministic enforcement of the Prime Directives at the proxy (forced injection, two-key override gate, secret/output guards). |
+| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide: deterministic vs. semantic rules; LiteLLM as enforcement chokepoint. |
+| [docs/litellm-integration-guide.md](./docs/litellm-integration-guide.md) | **How to wire** rules + guards into your **existing** LiteLLM proxy. |
+| [docs/openwebui-integration-guide.md](./docs/openwebui-integration-guide.md) | **How to wire** Open WebUI to LiteLLM and install the optional reinforcement filter. |
+| [litellm/](./litellm/) | Governance rules artifact (`governance_core.md`) + reference guard code to copy into your stack. |
 
 ### Which rules should I use?
 
@@ -131,7 +133,7 @@ This README explains what each layer requires and **how to install the split pac
 31. [Correction Log](#correction-log)
 32. [Related Documentation](#related-documentation)
 33. [Rules Split Architecture](#rules-split-architecture)
-34. [Rule Enforcement Layer (LiteLLM)](#rule-enforcement-layer-litellm)
+34. [Rule Enforcement (LiteLLM + Open WebUI)](#rule-enforcement-litellm--open-webui)
 
 ---
 
@@ -696,8 +698,10 @@ Located at the bottom of **`GENERAL_CLAUDE_CORE.md`** when using the split pack 
 | [CLAUDE.md](./CLAUDE.md) | Node.js fullstack reference |
 | [RULES_SPLIT.md](./RULES_SPLIT.md) | Split architecture design and rationale |
 | [.claude/rules/](./.claude/rules/) | Scoped rules (install with core) |
-| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide for deterministic, proxy-level rule enforcement |
-| [litellm/](./litellm/) | Implemented enforcement layer (LiteLLM guards, override gate, tests) |
+| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design guide for proxy-level rule enforcement |
+| [docs/litellm-integration-guide.md](./docs/litellm-integration-guide.md) | Wire rules + guards into your existing LiteLLM stack |
+| [docs/openwebui-integration-guide.md](./docs/openwebui-integration-guide.md) | Open WebUI wiring and optional reinforcement filter |
+| [litellm/](./litellm/) | Injectable rules (`governance_core.md`) + reference guard code (copy, do not deploy from here) |
 
 ### Quick install checklist (generic project)
 
@@ -733,19 +737,30 @@ The split is **implemented** in this repository. Summary:
 
 ---
 
-## Rule Enforcement Layer (LiteLLM)
+## Rule Enforcement (LiteLLM + Open WebUI)
 
-The rules files above raise compliance, but prose alone can never *guarantee* it — a system prompt is just more tokens for a probabilistic model. The [`litellm/`](./litellm/) directory implements deterministic, **proxy-level enforcement** of the Prime Directives, following [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md).
+The rules files above raise compliance, but prose alone cannot *guarantee* it. This repository
+provides **governance rules, reference guard code, and integration guides** — not a deployable
+LiteLLM/Open WebUI stack. Wire them into **your existing** proxy and UI:
 
-**Two classes of rules, two outcomes:**
+| Document | Purpose |
+|----------|---------|
+| [docs/litellm-rule-enforcement-guide.md](./docs/litellm-rule-enforcement-guide.md) | Design: deterministic vs. semantic rules, chokepoint model |
+| [docs/litellm-integration-guide.md](./docs/litellm-integration-guide.md) | Copy `governance_core.md` + `guards/` into your LiteLLM; register callback; env vars; Redis |
+| [docs/openwebui-integration-guide.md](./docs/openwebui-integration-guide.md) | Point WebUI at LiteLLM; optional filter; what UI can/cannot enforce |
+| [litellm/](./litellm/) | Rules artifact and reference code index |
+
+**Two classes of rules:**
 
 | Rule class | Examples | Enforceable to 100%? | Where |
 |------------|----------|----------------------|-------|
-| **Deterministic** | two-key override, no secrets in output, override-ack token, schema/format | **Yes — Guaranteed** | LiteLLM `pre_call`/`post_call` hooks (`litellm/guards/`) |
-| **Semantic** | stay in scope, don't assume intent, follow deploy protocol | **No — only Reduced** | Forced concise prompt + optional LLM verifier (+ Layer F on committed code) |
+| **Deterministic** | two-key override, no secrets in output, override-ack token | **Yes — Guaranteed** | LiteLLM hooks (copy `litellm/guards/` into your proxy) |
+| **Semantic** | stay in scope, don't assume intent | **No — only Reduced** | Forced prompt + optional verifier (+ linter/CI on code) |
 
-**What the layer guarantees on every governed request:** the governance core is present and untampered (forced injection); no response can assert or act on an override the proxy did not grant (two-key state machine); inbound/outbound secret patterns are hard-blocked. **What it only reduces:** scope/intent discipline.
+**The root rules files are still required** — this layer sits on top, not instead. LiteLLM governs
+proxy traffic only; Cursor, Claude Code, and Claude Desktop rely on `CLAUDE.md` /
+`GENERAL_CLAUDE*.md` / `.claude/rules/`. `governance_core.md` is a trimmed projection maintained
+top-down from those files. See [litellm/README.md § Relationship to the root rules files](./litellm/README.md#relationship-to-the-root-rules-files).
 
-**The root rules files are still required — this layer sits on top of them, it does not replace them.** LiteLLM only governs requests that pass through the proxy; file-reading agents (Cursor, Claude Code, Claude Desktop) never touch it and rely entirely on `CLAUDE.md` / `GENERAL_CLAUDE*.md` / `.claude/rules/`. `governance_core.md` is a trimmed projection of the Prime Directives, maintained top-down from those authoritative files. See [Relationship to the root rules files](./litellm/README.md#relationship-to-the-root-rules-files).
-
-The single most important caveat: the upstream model key lives only inside the proxy, which is why the proxy is an unbypassable chokepoint. Open WebUI filters are reinforcement only and are skipped on direct API calls. See [litellm/README.md](./litellm/README.md) for the full directive-by-directive enforcement map, onboarding, configuration, override walkthrough, runbook, and limitations.
+Hard enforcement lives in **your** LiteLLM proxy. Open WebUI filters are optional UX reinforcement
+and are bypassable on direct API calls.

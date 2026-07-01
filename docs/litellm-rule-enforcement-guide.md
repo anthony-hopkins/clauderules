@@ -7,6 +7,13 @@
 > deterministic code that runs around the model and can hard-block it.** With a LiteLLM + Open WebUI
 > stack, that deterministic layer is **LiteLLM** (the proxy every request must pass through). That is
 > where "unbreakable" actually lives.
+>
+> **This repo provides rules + reference code + guides — not a deployable stack.**
+> - Design (this document): mental model and layer architecture.
+> - Rules artifact: [`litellm/governance_core.md`](../litellm/governance_core.md).
+> - Reference guards: [`litellm/guards/`](../litellm/guards/).
+> - **Hands-on:** [litellm-integration-guide.md](./litellm-integration-guide.md) (your existing LiteLLM),
+>   [openwebui-integration-guide.md](./openwebui-integration-guide.md) (your existing Open WebUI).
 
 ---
 
@@ -312,14 +319,17 @@ A bloated, duplicated always-on surface hurts a served model — especially Haik
 
 ## 10. Implementation order
 
-1. **Disable streaming** for the governed models (unlocks blockable output).
-2. **LiteLLM `pre_call`**: forced system-prompt injection + tamper-strip (Sec. 2).
-3. **LiteLLM `post_call`**: deterministic output guardrails, hard-fail style (Sec. 4).
-4. **Override state machine** in the proxy cache (Sec. 5b).
-5. **Haiku verifier** call for the semantic remainder (Sec. 5a).
-6. **Repo tooling** (linter -> pre-commit -> CI -> Cursor hook) if output becomes code (Sec. 7).
-7. **Trim** the always-on prose to one core (Sec. 9).
-8. **Open WebUI filter** last, as reinforcement only (Sec. 6).
+Use the step-by-step guides for your **existing** stack — this repo does not ship Compose or images.
+
+1. **Disable streaming** for governed models (unlocks blockable output) — [LiteLLM integration guide § Step 4](./litellm-integration-guide.md#step-4--configure-environment-variables) (`GOV_FORCE_NON_STREAMING`).
+2. **Copy** [`litellm/governance_core.md`](../litellm/governance_core.md) and [`litellm/guards/`](../litellm/guards/) into your LiteLLM runtime — [integration guide § Steps 1–2](./litellm-integration-guide.md).
+3. **Register** `guards.proxy_handler_instance` in your `config.yaml` — [§ Step 3](./litellm-integration-guide.md#step-3--register-the-callback-in-litellm).
+4. **LiteLLM `post_call`**: deterministic output guardrails (reference: `guards/output_rules.py`, Sec. 4).
+5. **Override state machine** + Redis cache (Sec. 5b) — [§ Step 5](./litellm-integration-guide.md#step-5--enable-redis-for-the-override-state-machine).
+6. **Haiku verifier** (optional) — `GOV_ENABLE_VERIFIER` in your env.
+7. **Repo tooling** (linter → pre-commit → CI) if output becomes code (Sec. 7).
+8. **Trim** the always-on prose to one core (Sec. 9) — edit `governance_core.md`.
+9. **Open WebUI filter** last, as reinforcement only (Sec. 6) — [Open WebUI integration guide](./openwebui-integration-guide.md).
 
 ---
 
